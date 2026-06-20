@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: sec_insider_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  sec-insider-db:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/sec_insider_db
+      SEC_USER_AGENT: "SEC Insider Database admin@example.com"
+      SEC_REQUESTS_PER_SECOND: "8"
+      LOG_LEVEL: INFO
+      BACKFILL_START_YEAR: "2003"
+      HOURLY_SYNC_ENABLED: "true"
+      NIGHTLY_SYNC_ENABLED: "true"
+
+volumes:
+  postgres-data:

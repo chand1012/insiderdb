@@ -1,0 +1,10 @@
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock README.md alembic.ini ./
+COPY src ./src
+
+RUN uv sync --no-dev
+
+CMD ["uv", "run", "sec-insider-db"]
