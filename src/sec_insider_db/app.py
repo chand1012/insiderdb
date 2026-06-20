@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from sec_insider_db.config import Settings
 from sec_insider_db.database.migrations import run_migrations
@@ -29,34 +31,41 @@ def main() -> None:
 
     logger.info("Starting SEC Insider Database")
     run_migrations(settings)
+    asyncio.run(async_main(settings))
+
+
+async def async_main(settings: Settings) -> None:
     engine = create_engine_from_settings(settings)
-    verify_database_connection(engine)
-    verify_schema_version(engine)
-    ensure_materialized_views(engine)
+    try:
+        await verify_database_connection(engine)
+        await verify_schema_version(engine)
+        await ensure_materialized_views(engine)
 
-    session_factory = create_session_factory(engine)
-    with SecClient(settings) as client:
-        with session_factory() as session:
-            state = get_or_create_backfill_state(session)
-            backfill_complete = state.backfill_complete
-            log_startup_report(session, settings)
-            session.commit()
+        session_factory = create_session_factory(engine)
+        with SecClient(settings) as client:
+            async with session_factory() as session:
+                state = await get_or_create_backfill_state(session)
+                backfill_complete = state.backfill_complete
+                await log_startup_report(session, settings)
+                await session.commit()
 
-        if not backfill_complete:
-            BackfillRunner(settings, session_factory, client).run()
-            refresh_materialized_views(engine)
-        else:
-            IncrementalUpdater(session_factory, client, engine).run(source="startup_catchup")
+            if not backfill_complete:
+                await BackfillRunner(settings, session_factory, client).run()
+                await refresh_materialized_views(engine)
+            else:
+                await IncrementalUpdater(session_factory, client, engine).run(source="startup_catchup")
 
-        if settings.hourly_sync_enabled or settings.nightly_sync_enabled:
-            run_scheduler(settings, session_factory, client, engine)
-        else:
-            logger.info("Scheduler disabled; exiting after startup sync")
+            if settings.hourly_sync_enabled or settings.nightly_sync_enabled:
+                await run_scheduler(settings, session_factory, client, engine)
+            else:
+                logger.info("Scheduler disabled; exiting after startup sync")
+    finally:
+        await engine.dispose()
 
 
-def verify_schema_version(engine) -> None:
-    with engine.connect() as connection:
-        version = connection.scalar(text("SELECT version_num FROM alembic_version LIMIT 1"))
+async def verify_schema_version(engine: AsyncEngine) -> None:
+    async with engine.connect() as connection:
+        version = await connection.scalar(text("SELECT version_num FROM alembic_version LIMIT 1"))
     if not version:
         raise RuntimeError("Alembic schema version is missing")
     logger.info("Database schema version: %s", version)

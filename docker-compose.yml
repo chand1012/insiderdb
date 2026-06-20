@@ -16,7 +16,7 @@ services:
     depends_on:
       - postgres
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@postgres:5432/sec_insider_db
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/sec_insider_db
       SEC_USER_AGENT: "SEC Insider Database admin@example.com"
       SEC_REQUESTS_PER_SECOND: "8"
       LOG_LEVEL: INFO

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from sec_insider_db.database.models import SecInsiderTransaction, SecOwnershipFiling
 from sec_insider_db.ingestion.observability import (
@@ -32,8 +32,8 @@ class IngestionOutcome:
     error: str | None = None
 
 
-def latest_processed_filing_date(session: Session) -> date | None:
-    return session.scalar(
+async def latest_processed_filing_date(session: AsyncSession) -> date | None:
+    return await session.scalar(
         select(SecOwnershipFiling.filing_date)
         .where(SecOwnershipFiling.parse_status == "parsed")
         .order_by(SecOwnershipFiling.filing_date.desc(), SecOwnershipFiling.id.desc())
@@ -41,8 +41,8 @@ def latest_processed_filing_date(session: Session) -> date | None:
     )
 
 
-def latest_processed_accession(session: Session) -> str | None:
-    return session.scalar(
+async def latest_processed_accession(session: AsyncSession) -> str | None:
+    return await session.scalar(
         select(SecOwnershipFiling.accession_number)
         .where(SecOwnershipFiling.parse_status == "parsed")
         .order_by(SecOwnershipFiling.filing_date.desc(), SecOwnershipFiling.id.desc())
@@ -50,11 +50,17 @@ def latest_processed_accession(session: Session) -> str | None:
     )
 
 
-def ingest_index_entry(session: Session, client: SecClient, entry: IndexEntry, *, source: str) -> IngestionOutcome:
-    log = start_ingestion_log(session, entry, source)
+async def ingest_index_entry(
+    session: AsyncSession,
+    client: SecClient,
+    entry: IndexEntry,
+    *,
+    source: str,
+) -> IngestionOutcome:
+    log = await start_ingestion_log(session, entry, source)
     response_size_bytes: int | None = None
     try:
-        existing = session.scalar(
+        existing = await session.scalar(
             select(SecOwnershipFiling).where(SecOwnershipFiling.accession_number == entry.accession_number)
         )
         if existing is not None and existing.parse_status == "parsed":
@@ -74,12 +80,12 @@ def ingest_index_entry(session: Session, client: SecClient, entry: IndexEntry, *
                 fallback_filing_date=entry.filing_date,
             )
         except OwnershipParseError as exc:
-            _record_failed_filing(session, entry, str(exc), existing=existing)
+            await _record_failed_filing(session, entry, str(exc), existing=existing)
             mark_ingestion_failed(log, exc, metadata=entry_metadata(entry, response_size_bytes=response_size_bytes))
             return IngestionOutcome(accession_number=entry.accession_number, failed=True, error=str(exc))
 
-        filing = _store_parsed_filing(session, parsed, existing=existing)
-        transaction_count = len(filing.transactions)
+        await _store_parsed_filing(session, parsed, existing=existing)
+        transaction_count = len(parsed.transactions)
         mark_ingestion_success(
             log,
             transaction_count=transaction_count,
@@ -95,8 +101,8 @@ def ingest_index_entry(session: Session, client: SecClient, entry: IndexEntry, *
         raise
 
 
-def _record_failed_filing(
-    session: Session,
+async def _record_failed_filing(
+    session: AsyncSession,
     entry: IndexEntry,
     error: str,
     *,
@@ -114,20 +120,20 @@ def _record_failed_filing(
     if existing is None:
         session.add(filing)
     else:
-        session.execute(delete(SecInsiderTransaction).where(SecInsiderTransaction.filing_id == existing.id))
-    session.flush()
+        await session.execute(delete(SecInsiderTransaction).where(SecInsiderTransaction.filing_id == existing.id))
+    await session.flush()
     return filing
 
 
-def _store_parsed_filing(
-    session: Session,
+async def _store_parsed_filing(
+    session: AsyncSession,
     parsed: ParsedFiling,
     *,
     existing: SecOwnershipFiling | None,
 ) -> SecOwnershipFiling:
     filing = existing or SecOwnershipFiling(accession_number=parsed.accession_number)
     if existing is not None:
-        session.execute(delete(SecInsiderTransaction).where(SecInsiderTransaction.filing_id == existing.id))
+        await session.execute(delete(SecInsiderTransaction).where(SecInsiderTransaction.filing_id == existing.id))
 
     filing.form_type = parsed.form_type
     filing.filing_date = parsed.filing_date
@@ -142,7 +148,7 @@ def _store_parsed_filing(
 
     if existing is None:
         session.add(filing)
-    session.flush()
+    await session.flush()
 
     owner = parsed.primary_owner
     for transaction in parsed.transactions:
@@ -180,5 +186,5 @@ def _store_parsed_filing(
                 underlying_security_title=transaction.underlying_security_title,
             )
         )
-    session.flush()
+    await session.flush()
     return filing

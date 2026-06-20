@@ -7,6 +7,7 @@ Self-hosted Python application that ingests SEC Forms 3, 4, and 5 ownership fili
 - Python 3.14+
 - uv
 - PostgreSQL 17+
+- asyncpg-backed SQLAlchemy database connections
 - A SEC-compliant `SEC_USER_AGENT` containing contact information
 
 ## Configuration

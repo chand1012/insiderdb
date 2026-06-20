@@ -6,7 +6,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from sec_insider_db.config import Settings
 from sec_insider_db.database.models import (
@@ -31,7 +31,7 @@ VALID_INGESTION_SOURCES = frozenset(
 )
 
 
-def start_ingestion_log(session: Session, entry: IndexEntry, source: str) -> SecIngestionLog:
+async def start_ingestion_log(session: AsyncSession, entry: IndexEntry, source: str) -> SecIngestionLog:
     if source not in VALID_INGESTION_SOURCES:
         raise ValueError(f"Unsupported ingestion source: {source}")
     log = SecIngestionLog(
@@ -43,7 +43,7 @@ def start_ingestion_log(session: Session, entry: IndexEntry, source: str) -> Sec
         started_at=_utcnow(),
     )
     session.add(log)
-    session.flush()
+    await session.flush()
     return log
 
 
@@ -114,15 +114,15 @@ def existing_filing_metadata(filing: SecOwnershipFiling) -> dict[str, Any]:
     )
 
 
-def log_startup_report(session: Session, settings: Settings) -> None:
-    report = build_startup_report(session, settings)
+async def log_startup_report(session: AsyncSession, settings: Settings) -> None:
+    report = await build_startup_report(session, settings)
     logger.info("sec_startup_report=%s", json.dumps(report, sort_keys=True, default=str))
 
 
-def build_startup_report(session: Session, settings: Settings) -> dict[str, Any]:
-    state = session.get(SecBackfillState, 1)
-    filing_count = session.scalar(select(func.count()).select_from(SecOwnershipFiling)) or 0
-    transaction_count = session.scalar(select(func.count()).select_from(SecInsiderTransaction)) or 0
+async def build_startup_report(session: AsyncSession, settings: Settings) -> dict[str, Any]:
+    state = await session.get(SecBackfillState, 1)
+    filing_count = await session.scalar(select(func.count()).select_from(SecOwnershipFiling)) or 0
+    transaction_count = await session.scalar(select(func.count()).select_from(SecInsiderTransaction)) or 0
     today = date.today()
     current_quarter = {"year": today.year, "quarter": quarter_for_date(today)}
 

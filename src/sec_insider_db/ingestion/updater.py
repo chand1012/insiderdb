@@ -4,7 +4,7 @@ import logging
 from datetime import date, timedelta
 
 import httpx
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from sec_insider_db.ingestion.storage import (
     ingest_index_entry,
@@ -19,15 +19,15 @@ logger = logging.getLogger(__name__)
 
 
 class IncrementalUpdater:
-    def __init__(self, session_factory: sessionmaker, client: SecClient, engine) -> None:
+    def __init__(self, session_factory: async_sessionmaker, client: SecClient, engine: AsyncEngine) -> None:
         self._session_factory = session_factory
         self._client = client
         self._engine = engine
 
-    def run(self, *, source: str = "startup_catchup") -> None:
-        with self._session_factory() as session:
-            latest_date = latest_processed_filing_date(session)
-            latest_accession = latest_processed_accession(session)
+    async def run(self, *, source: str = "startup_catchup") -> None:
+        async with self._session_factory() as session:
+            latest_date = await latest_processed_filing_date(session)
+            latest_accession = await latest_processed_accession(session)
 
         if latest_date is None:
             logger.info("No processed filings found; incremental update skipped")
@@ -55,14 +55,14 @@ class IncrementalUpdater:
                     continue
                 raise
             for entry in parse_master_index(index_text):
-                with self._session_factory() as session:
+                async with self._session_factory() as session:
                     try:
-                        outcome = ingest_index_entry(session, self._client, entry, source=source)
+                        outcome = await ingest_index_entry(session, self._client, entry, source=source)
                     except Exception:
-                        session.commit()
+                        await session.commit()
                         raise
                     else:
-                        session.commit()
+                        await session.commit()
                 if outcome.inserted:
                     inserted += 1
                 elif outcome.skipped:
@@ -72,4 +72,4 @@ class IncrementalUpdater:
                     logger.warning("Failed to parse %s: %s", outcome.accession_number, outcome.error)
 
         logger.info("Incremental sync complete source=%s: inserted=%s skipped=%s failed=%s", source, inserted, skipped, failed)
-        refresh_materialized_views(self._engine)
+        await refresh_materialized_views(self._engine)
