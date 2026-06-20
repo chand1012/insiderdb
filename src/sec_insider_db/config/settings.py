@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
+from dotenv import load_dotenv
+
 
 def normalize_database_url(database_url: str) -> str:
     if database_url.startswith("postgres://"):
@@ -43,6 +45,8 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
+        load_dotenv()
+
         requests_per_second = float(os.getenv("SEC_REQUESTS_PER_SECOND", "8"))
         if requests_per_second <= 0:
             raise RuntimeError("SEC_REQUESTS_PER_SECOND must be greater than 0")

@@ -29,9 +29,6 @@ Optional:
 ```bash
 cp .env.example .env
 uv sync
-set -a
-. ./.env
-set +a
 uv run sec-insider-db
 ```
 
