@@ -11,7 +11,7 @@ The core responsibilities are:
 - Run Alembic migrations on startup.
 - Verify PostgreSQL connectivity and schema state.
 - Ensure materialized views exist.
-- Resume historical backfill from 2003 Q1 when incomplete.
+- Resume historical backfill from 2020 Q1 by default when incomplete.
 - Run startup catch-up after backfill is complete.
 - Continue hourly and nightly scheduled syncs.
 - Record ingestion observability in `sec_ingestion_log`.
@@ -106,7 +106,7 @@ Optional:
 
 - `SEC_REQUESTS_PER_SECOND`, default `8`, maximum `10`
 - `LOG_LEVEL`, default `INFO`
-- `BACKFILL_START_YEAR`, default `2003`
+- `BACKFILL_START_YEAR`, default `2020`
 - `HOURLY_SYNC_ENABLED`, default `true`
 - `NIGHTLY_SYNC_ENABLED`, default `true`
 

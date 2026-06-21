@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from dotenv import load_dotenv
 
 
+DEFAULT_BACKFILL_START_YEAR = 2020
+
+
 def normalize_database_url(database_url: str) -> str:
     if database_url.startswith("postgres://"):
         return "postgresql+asyncpg://" + database_url.removeprefix("postgres://")
@@ -41,7 +44,7 @@ class Settings:
     sec_user_agent: str
     sec_requests_per_second: float = 8.0
     log_level: str = "INFO"
-    backfill_start_year: int = 2003
+    backfill_start_year: int = DEFAULT_BACKFILL_START_YEAR
     hourly_sync_enabled: bool = True
     nightly_sync_enabled: bool = True
 
@@ -55,7 +58,7 @@ class Settings:
         if requests_per_second > 10:
             raise RuntimeError("SEC_REQUESTS_PER_SECOND must not exceed 10")
 
-        start_year = int(os.getenv("BACKFILL_START_YEAR", "2003"))
+        start_year = int(os.getenv("BACKFILL_START_YEAR", str(DEFAULT_BACKFILL_START_YEAR)))
         if start_year < 2003:
             raise RuntimeError("BACKFILL_START_YEAR must be 2003 or later")
 

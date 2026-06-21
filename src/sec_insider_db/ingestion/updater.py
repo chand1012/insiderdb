@@ -6,6 +6,7 @@ from datetime import date, timedelta
 import httpx
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
+from sec_insider_db.config import Settings
 from sec_insider_db.ingestion.storage import (
     ingest_index_entry,
     latest_processed_accession,
@@ -19,7 +20,14 @@ logger = logging.getLogger(__name__)
 
 
 class IncrementalUpdater:
-    def __init__(self, session_factory: async_sessionmaker, client: SecClient, engine: AsyncEngine) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        session_factory: async_sessionmaker,
+        client: SecClient,
+        engine: AsyncEngine,
+    ) -> None:
+        self._settings = settings
         self._session_factory = session_factory
         self._client = client
         self._engine = engine
@@ -33,7 +41,7 @@ class IncrementalUpdater:
             logger.info("No processed filings found; incremental update skipped")
             return
 
-        start = max(latest_date - timedelta(days=14), date(2003, 1, 1))
+        start = max(latest_date - timedelta(days=14), date(self._settings.backfill_start_year, 1, 1))
         end = date.today()
         logger.info(
             "Running incremental sync source=%s from %s through %s; latest accession is %s",

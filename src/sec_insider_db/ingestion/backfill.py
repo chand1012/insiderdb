@@ -5,6 +5,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from sec_insider_db.config import Settings
+from sec_insider_db.ingestion.bulk_dataset import ingest_bulk_dataset_quarter
 from sec_insider_db.ingestion.checkpoints import (
     checkpoint_backfill,
     get_or_create_backfill_state,
@@ -42,11 +43,18 @@ class BackfillRunner:
                 if (year, quarter) < (resume_year, resume_quarter):
                     continue
 
-            await self._backfill_quarter(
-                year,
-                quarter,
-                resume_accession=resume_accession if (year, quarter) == (resume_year, resume_quarter) else None,
+            used_bulk_dataset = await ingest_bulk_dataset_quarter(
+                self._session_factory,
+                self._client,
+                year=year,
+                quarter=quarter,
             )
+            if not used_bulk_dataset:
+                await self._backfill_quarter(
+                    year,
+                    quarter,
+                    resume_accession=resume_accession if (year, quarter) == (resume_year, resume_quarter) else None,
+                )
             resume_accession = None
 
         async with self._session_factory() as session:

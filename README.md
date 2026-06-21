@@ -21,7 +21,7 @@ Optional:
 
 - `SEC_REQUESTS_PER_SECOND`, default `8`, maximum `10`
 - `LOG_LEVEL`, default `INFO`
-- `BACKFILL_START_YEAR`, default `2003`
+- `BACKFILL_START_YEAR`, default `2020`
 - `HOURLY_SYNC_ENABLED`, default `true`
 - `NIGHTLY_SYNC_ENABLED`, default `true`
 

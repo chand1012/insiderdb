@@ -17,7 +17,7 @@ EASTERN = ZoneInfo("America/New_York")
 
 
 async def run_scheduler(settings: Settings, session_factory: async_sessionmaker, client: SecClient, engine: AsyncEngine) -> None:
-    updater = IncrementalUpdater(session_factory, client, engine)
+    updater = IncrementalUpdater(settings, session_factory, client, engine)
     state = {"last_hourly": None, "last_nightly": None}
 
     async def tick() -> None:

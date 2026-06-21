@@ -53,7 +53,7 @@ async def async_main(settings: Settings) -> None:
                 await BackfillRunner(settings, session_factory, client).run()
                 await refresh_materialized_views(engine)
             else:
-                await IncrementalUpdater(session_factory, client, engine).run(source="startup_catchup")
+                await IncrementalUpdater(settings, session_factory, client, engine).run(source="startup_catchup")
 
             if settings.hourly_sync_enabled or settings.nightly_sync_enabled:
                 await run_scheduler(settings, session_factory, client, engine)

@@ -20,7 +20,7 @@ services:
       SEC_USER_AGENT: "SEC Insider Database admin@example.com"
       SEC_REQUESTS_PER_SECOND: "8"
       LOG_LEVEL: INFO
-      BACKFILL_START_YEAR: "2003"
+      BACKFILL_START_YEAR: "2020"
       HOURLY_SYNC_ENABLED: "true"
       NIGHTLY_SYNC_ENABLED: "true"
 
