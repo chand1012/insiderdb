@@ -296,3 +296,9 @@ These are not bugs to fix unless asked, but they matter when planning work:
 - There is no API/UI/auth layer by design.
 - There is no distributed lock for multi-worker ingestion.
 - There is no Prometheus/OpenTelemetry exporter yet; observability is database-log centric.
+
+## API / Frontend Service
+
+The secondary service `sec-insider-api` is a read-only FastAPI app. It serves REST endpoints under `/api`, Swagger UI at `/docs`, ReDoc at `/redoc`, a vanilla Oat-styled frontend from `src/sec_insider_db/api/frontend`, and a curated FastMCP endpoint mounted at `/mcp`.
+
+The API service does not run migrations or ingestion. It only requires `DATABASE_URL` and shares the same asyncpg-backed PostgreSQL database as the worker. Keep API/MCP endpoints read-only unless explicitly requested.

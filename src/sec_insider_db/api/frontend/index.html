@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SEC Insider Database</title>
+  <link rel="stylesheet" href="/assets/oat.min.css?v=8">
+  <link rel="stylesheet" href="/assets/styles.css?v=8">
+  <script src="/assets/oat.min.js?v=8" defer></script>
+  <script src="/assets/app.js?v=8" defer></script>
+</head>
+<body>
+  <nav data-topnav class="site-nav" aria-label="Primary navigation">
+    <a href="#/" class="site-brand" aria-label="SEC Insider Database home">
+      <strong>Insider DB</strong>
+    </a>
+    <a href="#/clusters">Cluster Buys</a>
+    <a href="#/screener">Screener</a>
+    <a href="#/ingestion">Ingestion</a>
+    <a href="#/api-docs">API Docs</a>
+  </nav>
+
+  <main class="container">
+    <section id="view"></section>
+  </main>
+
+  <template id="loading-template">
+    <article class="card" aria-busy="true">
+      <p>Loading...</p>
+    </article>
+  </template>
+</body>
+</html>

@@ -58,3 +58,22 @@ Materialized views:
 - `sec_ingestion_summary`
 
 The app includes Forms `3`, `4`, and `5`, plus amendments `3/A`, `4/A`, and `5/A`. Transaction ingestion is idempotent through filing accession and transaction uniqueness constraints.
+
+## API and Frontend
+
+The stack includes an optional read-only FastAPI service. It serves the vanilla Oat-styled frontend, REST API docs, and a curated MCP endpoint.
+
+When using Docker Compose:
+
+- Frontend: http://localhost:8000/
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+- OpenAPI JSON: http://localhost:8000/openapi.json
+- MCP endpoint: http://localhost:8000/mcp
+
+Run only the API locally with:
+
+```bash
+uv sync
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/sec_insider_db uv run sec-insider-api
+```
