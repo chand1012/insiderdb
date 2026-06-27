@@ -8,6 +8,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 MAX_LIMIT = 500
 DEFAULT_LIMIT = 100
+PLACEHOLDER_TICKERS = frozenset({"", "NONE", "N/A", "NA", "NULL", "-", "--"})
+PLACEHOLDER_TICKERS_SQL = "'NONE', 'N/A', 'NA', 'NULL', '-', '--'"
+
+
+def normalize_ticker(value: str | None) -> str | None:
+    if value is None:
+        return None
+    ticker = value.strip().upper()
+    if ticker in PLACEHOLDER_TICKERS:
+        return None
+    return ticker
 
 
 def clamp_limit(limit: int | None) -> int:
@@ -61,12 +72,15 @@ async def latest_cluster_buys(
     limit: int | None = DEFAULT_LIMIT,
     offset: int | None = 0,
 ) -> list[dict[str, Any]]:
+    normalized_ticker = normalize_ticker(ticker)
+    if ticker and normalized_ticker is None:
+        return []
     params: dict[str, Any] = {
         "limit": clamp_limit(limit),
         "offset": clamp_offset(offset),
         "start_date": date.today() - timedelta(days=max(0, days if days is not None else 36500)),
         "min_total_value": min_total_value,
-        "ticker": ticker.upper() if ticker else None,
+        "ticker": normalized_ticker,
     }
     rows = await session.execute(text("""
         SELECT ticker, cluster_start, cluster_end, unique_insiders, total_value,
@@ -74,6 +88,7 @@ async def latest_cluster_buys(
                COALESCE(officer_titles, ARRAY[]::text[]) AS officer_titles
         FROM sec_cluster_buys
         WHERE cluster_end >= :start_date
+          AND ticker NOT IN ('NONE', 'N/A', 'NA', 'NULL', '-', '--')
           AND (CAST(:min_total_value AS numeric) IS NULL OR total_value >= CAST(:min_total_value AS numeric))
           AND (CAST(:ticker AS text) IS NULL OR ticker = CAST(:ticker AS text))
         ORDER BY cluster_end DESC, total_value DESC
@@ -94,8 +109,11 @@ async def search_transactions(
     limit: int | None = DEFAULT_LIMIT,
     offset: int | None = 0,
 ) -> list[dict[str, Any]]:
+    normalized_ticker = normalize_ticker(ticker)
+    if ticker and normalized_ticker is None:
+        return []
     params = {
-        "ticker": ticker.upper() if ticker else None,
+        "ticker": normalized_ticker,
         "owner": f"%{owner}%" if owner else None,
         "transaction_code": transaction_code.upper() if transaction_code else None,
         "start_date": start_date,
@@ -126,6 +144,9 @@ async def search_transactions(
 
 
 async def ticker_detail(session: AsyncSession, ticker: str) -> dict[str, Any] | None:
+    normalized_ticker = normalize_ticker(ticker)
+    if normalized_ticker is None:
+        return None
     row = (await session.execute(text("""
         SELECT
             :ticker AS ticker,
@@ -141,7 +162,7 @@ async def ticker_detail(session: AsyncSession, ticker: str) -> dict[str, Any] | 
             COUNT(DISTINCT COALESCE(reporting_owner_cik, reporting_owner_name))::bigint AS unique_insiders
         FROM sec_insider_transactions
         WHERE ticker = :ticker
-    """), {"ticker": ticker.upper()})).mappings().one()
+    """), {"ticker": normalized_ticker})).mappings().one()
     if not row["transaction_count"]:
         return None
     return dict(row)

@@ -5,6 +5,19 @@ const number = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
 
 function fmtMoney(value) { return value == null ? '' : money.format(Number(value)); }
 function fmtNumber(value) { return value == null ? '' : number.format(Number(value)); }
+const placeholderTickers = new Set(['', 'NONE', 'N/A', 'NA', 'NULL', '-', '--']);
+
+function normalizeTicker(value) {
+  const ticker = String(value ?? '').trim().toUpperCase();
+  return placeholderTickers.has(ticker) ? '' : ticker;
+}
+
+function tickerLink(value) {
+  const ticker = normalizeTicker(value);
+  if (!ticker) return '<span class="muted">Unlisted</span>';
+  return `<a href="#/ticker/${encodeURIComponent(ticker)}">${escapeHtml(ticker)}</a>`;
+}
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
 }
@@ -20,9 +33,49 @@ async function api(path) {
 function setLoading() { view.innerHTML = document.querySelector('#loading-template').innerHTML; }
 function setError(error) { view.innerHTML = `<article class="card" role="alert" data-variant="danger"><h2>Request failed</h2><p class="error">${escapeHtml(error.message)}</p></article>`; }
 
+function tradingViewTheme() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function tradingViewSymbol(ticker) {
+  return normalizeTicker(ticker).replace(/[^A-Z0-9.:-]/g, '');
+}
+
+function tradingViewChartHeight() {
+  return window.matchMedia && window.matchMedia('(max-width: 768px)').matches ? 630 : 780;
+}
+
+function renderTradingViewChart(ticker) {
+  const container = document.querySelector('#tradingview-chart');
+  const symbol = tradingViewSymbol(ticker);
+  if (!container || !symbol) return;
+
+  const height = tradingViewChartHeight();
+  container.style.height = `${height}px`;
+  container.innerHTML = '<div class="tradingview-widget-container__widget"></div>';
+  const script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+  script.async = true;
+  script.text = JSON.stringify({
+    width: '100%',
+    height,
+    symbol,
+    interval: 'D',
+    timezone: 'Etc/UTC',
+    theme: tradingViewTheme(),
+    style: '1',
+    locale: 'en',
+    allow_symbol_change: true,
+    calendar: false,
+    support_host: 'https://www.tradingview.com',
+  });
+  container.appendChild(script);
+}
+
 function clusterRows(rows) {
   return rows.map(row => `<tr>
-    <td><a href="#/ticker/${encodeURIComponent(row.ticker)}">${escapeHtml(row.ticker)}</a></td>
+    <td>${tickerLink(row.ticker)}</td>
     <td>${escapeHtml(row.cluster_start)}</td>
     <td>${escapeHtml(row.cluster_end)}</td>
     <td class="number">${row.unique_insiders}</td>
@@ -36,7 +89,7 @@ function transactionRows(rows) {
   return rows.map(row => `<tr>
     <td>${escapeHtml(row.filing_date)}</td>
     <td>${escapeHtml(row.transaction_date || '')}</td>
-    <td><a href="#/ticker/${encodeURIComponent(row.ticker || '')}">${escapeHtml(row.ticker || '')}</a></td>
+    <td>${tickerLink(row.ticker)}</td>
     <td class="wrap">${escapeHtml(row.issuer || '')}</td>
     <td class="wrap">${escapeHtml(row.reporting_owner_name || '')}</td>
     <td class="wrap">${escapeHtml(row.officer_title || row.role || '')}</td>
@@ -70,10 +123,9 @@ async function dashboard() {
   ]);
   view.innerHTML = `<section class="hero"><h1>SEC Insider Database</h1><p>Local SEC ownership intelligence for cluster buys, insider transactions, and ingestion health.</p></section>
     <section class="row metrics">
-      <article class="card metric col-3"><p>Filings</p><strong>${fmtNumber(summary.filing_count)}</strong></article>
-      <article class="card metric col-3"><p>Transactions</p><strong>${fmtNumber(summary.transaction_count)}</strong></article>
-      <article class="card metric col-3"><p>Coverage</p><strong>${escapeHtml(summary.min_filing_date || '')} - ${escapeHtml(summary.max_filing_date || '')}</strong></article>
-      <article class="card metric col-3"><p>Backfill</p><strong>${summary.backfill_complete ? 'Complete' : `Q${summary.backfill_quarter || ''} ${summary.backfill_year || ''}`}</strong></article>
+      <article class="card metric col-4"><p>Filings</p><strong>${fmtNumber(summary.filing_count)}</strong></article>
+      <article class="card metric col-4"><p>Transactions</p><strong>${fmtNumber(summary.transaction_count)}</strong></article>
+      <article class="card metric col-4"><p>Coverage</p><strong>${escapeHtml(summary.min_filing_date || '')} - ${escapeHtml(summary.max_filing_date || '')}</strong></article>
     </section>
     <section><h2>Latest Cluster Buys</h2>${clusterTable(clusters)}</section>
     <section><h2>Latest Purchases</h2>${transactionTable(buys)}</section>`;
@@ -125,6 +177,11 @@ async function screenerPage() {
 }
 
 async function tickerPage(ticker) {
+  const normalizedTicker = normalizeTicker(ticker);
+  if (!normalizedTicker) {
+    view.innerHTML = `<article class="card" role="alert"><h1>Unlisted issuer</h1><p class="muted">This filing uses a placeholder ticker value, not a TradingView-listed symbol.</p></article>`;
+    return;
+  }
   setLoading();
   const [detail, rows] = await Promise.all([
     api(`/api/tickers/${encodeURIComponent(ticker)}`),
@@ -137,7 +194,12 @@ async function tickerPage(ticker) {
       <article class="card metric col-3"><p>Sale value</p><strong>${fmtMoney(detail.sale_value)}</strong></article>
       <article class="card metric col-3"><p>Insiders</p><strong>${fmtNumber(detail.unique_insiders)}</strong></article>
     </section>
+    <section class="ticker-chart-section">
+      <h2>Price Chart</h2>
+      <div id="tradingview-chart" class="tradingview-widget-container ticker-chart" aria-label="TradingView price chart for ${escapeHtml(detail.ticker)}"></div>
+    </section>
     <h2>Recent Transactions</h2>${transactionTable(rows)}`;
+  renderTradingViewChart(detail.ticker || ticker);
 }
 
 async function ingestionPage() {

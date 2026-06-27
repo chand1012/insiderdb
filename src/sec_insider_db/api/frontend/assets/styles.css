@@ -129,12 +129,13 @@ td.wrap {
 
 .docs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
 .docs-card {
   display: grid;
+  min-width: 0;
   gap: var(--space-4);
   align-content: start;
 }
@@ -145,12 +146,35 @@ td.wrap {
   margin-block: 0;
 }
 
+.docs-card h3 {
+  font-size: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
+.docs-card p,
+.definition-list dd {
+  overflow-wrap: anywhere;
+}
+
 .docs-card pre {
+  max-width: 100%;
   overflow-x: auto;
+  box-sizing: border-box;
   padding: var(--space-4);
   border: 1px solid var(--border);
   border-radius: var(--radius-medium);
   background: var(--muted);
+}
+
+.docs-card pre code {
+  white-space: pre;
+}
+
+.docs-card p code,
+.definition-list code,
+.prompt-list code {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .definition-list {
@@ -180,4 +204,68 @@ td.wrap {
 
 .prompt-list p {
   margin-block: 0;
+}
+
+.prompt-list code {
+  display: block;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+  background: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .docs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ticker-chart-section {
+  margin-block: var(--space-8);
+}
+
+.ticker-chart {
+  width: 100%;
+  height: 780px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+  background: var(--card);
+}
+
+.ticker-chart .tradingview-widget-container__widget {
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 768px) {
+  .ticker-chart {
+    height: 630px;
+  }
+}
+
+#view > section + section,
+#view > div + section,
+#view > section + div {
+  margin-block-start: var(--space-8);
+}
+
+.site-footer {
+  margin-block-start: var(--space-10);
+  border-block-start: 1px solid var(--border);
+}
+
+.footer-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--space-5);
+  color: var(--muted-foreground);
+}
+
+.footer-inner nav {
+  display: flex;
+  gap: var(--space-4);
 }

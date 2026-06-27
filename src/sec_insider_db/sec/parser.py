@@ -9,6 +9,8 @@ from html.parser import HTMLParser
 from typing import Iterable
 from xml.etree import ElementTree
 
+from sec_insider_db.utils.tickers import normalize_ticker_symbol
+
 
 class OwnershipParseError(ValueError):
     pass
@@ -114,7 +116,7 @@ def parse_ownership_filing(
 
     issuer_cik = _text(issuer, "issuerCik") if issuer is not None else None
     issuer_name = _text(issuer, "issuerName") if issuer is not None else None
-    issuer_trading_symbol = _text(issuer, "issuerTradingSymbol") if issuer is not None else None
+    issuer_trading_symbol = normalize_ticker_symbol(_text(issuer, "issuerTradingSymbol") if issuer is not None else None)
 
     owners = tuple(_parse_owner(owner) for owner in _children(root, "reportingOwner"))
     transactions = tuple(
@@ -426,7 +428,7 @@ def _legacy_issuer_name_and_ticker(filing_text: str) -> tuple[str | None, str | 
     value = _clean_legacy_text(_strip_html(match.group(1)))
     ticker_match = re.match(r"(?P<name>.*?)\s*\((?P<ticker>[^()]+)\)\s*$", value)
     if ticker_match:
-        return ticker_match.group("name").strip() or None, ticker_match.group("ticker").strip() or None
+        return ticker_match.group("name").strip() or None, normalize_ticker_symbol(ticker_match.group("ticker"))
     return value or None, None
 
 

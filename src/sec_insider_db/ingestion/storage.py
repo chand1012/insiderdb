@@ -18,6 +18,7 @@ from sec_insider_db.ingestion.observability import (
     start_ingestion_log,
 )
 from sec_insider_db.sec.client import SecClient
+from sec_insider_db.utils.tickers import normalize_ticker_symbol
 from sec_insider_db.sec.indexes import IndexEntry
 from sec_insider_db.sec.parser import OwnershipParseError, ParsedFiling, parse_ownership_filing
 
@@ -160,7 +161,7 @@ async def _store_parsed_filing(
                 transaction_hash=transaction.transaction_hash,
                 issuer_cik=parsed.issuer_cik,
                 issuer=parsed.issuer_name,
-                ticker=parsed.issuer_trading_symbol,
+                ticker=normalize_ticker_symbol(parsed.issuer_trading_symbol),
                 reporting_owner_cik=owner.cik if owner else None,
                 reporting_owner_name=owner.name if owner else None,
                 role=owner.role if owner else None,
