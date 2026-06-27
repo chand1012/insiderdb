@@ -7,4 +7,6 @@ COPY src ./src
 
 RUN uv sync --no-dev
 
+EXPOSE 8000
+
 CMD ["uv", "run", "sec-insider-db"]

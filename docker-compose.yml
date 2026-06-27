@@ -1,3 +1,7 @@
+x-sec-insider-image: &sec-insider-image
+  image: ${SEC_INSIDER_IMAGE:-sec-insider-db:local}
+  build: .
+
 services:
   postgres:
     image: postgres:17
@@ -11,7 +15,7 @@ services:
       - "5432:5432"
 
   sec-insider-db:
-    build: .
+    <<: *sec-insider-image
     restart: unless-stopped
     depends_on:
       - postgres
@@ -25,9 +29,8 @@ services:
       NIGHTLY_SYNC_ENABLED: "true"
 
   sec-insider-api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
+    <<: *sec-insider-image
+    command: ["uv", "run", "sec-insider-api"]
     restart: unless-stopped
     depends_on:
       - postgres

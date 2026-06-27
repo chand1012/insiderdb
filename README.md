@@ -35,13 +35,21 @@ uv run sec-insider-db
 
 ## Docker
 
+The worker and API use the same container image. The default command runs the ingestion worker; the API container overrides the command with `uv run sec-insider-api`.
+
 Full stack with PostgreSQL:
 
 ```bash
 docker compose up --build
 ```
 
-Standalone container requires an existing PostgreSQL database and the environment variables above.
+Use the published GHCR image instead of building locally:
+
+```bash
+SEC_INSIDER_IMAGE=ghcr.io/chand1012/insiderdb:latest docker compose up
+```
+
+Standalone worker container requires an existing PostgreSQL database and the environment variables above.
 
 ## What It Creates
 
