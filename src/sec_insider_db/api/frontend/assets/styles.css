@@ -58,6 +58,36 @@
   align-self: end;
 }
 
+.sales-metrics {
+  margin-block-end: var(--space-6);
+}
+
+.sales-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-block-start: var(--space-4);
+}
+
+.sales-pagination span {
+  min-width: 5rem;
+  text-align: center;
+}
+
+.empty-state {
+  text-align: center;
+}
+
+.empty-state h2,
+.empty-state p {
+  margin-block: 0;
+}
+
+.empty-state p {
+  margin-block-start: var(--space-2);
+}
+
 .table {
   border: 1px solid var(--border);
   border-radius: var(--radius-medium);

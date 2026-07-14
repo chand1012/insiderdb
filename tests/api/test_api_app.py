@@ -47,7 +47,26 @@ async def test_frontend_index_served(app):
     assert response.status_code == 200
     assert 'class="site-brand"' in response.text
     assert "Insider DB" in response.text
+    assert '<a href="#/sales">Sales</a>' in response.text
     assert 'brand-mark">SEC</span>' not in response.text
+
+
+@pytest.mark.anyio
+async def test_frontend_sales_page_assets_are_served(app):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/assets/app.js?v=198766")
+
+    assert response.status_code == 200
+    assert "async function salesPage()" in response.text
+    assert "params.set('transaction_code', 'S')" in response.text
+    assert "params.set('offset', String(offset))" in response.text
+    assert "if (parts[0] === 'sales') return await salesPage()" in response.text
+    assert "offset = 0" in response.text
+    assert "offset = Math.max(0, offset - limit)" in response.text
+    assert "offset += limit" in response.text
+    assert "rows.length < limit ? 'disabled' : ''" in response.text
+    assert "No sales found" in response.text
+    assert "Sales request failed" in response.text
 
 
 @pytest.mark.anyio

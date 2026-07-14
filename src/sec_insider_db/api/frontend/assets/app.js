@@ -176,6 +176,74 @@ async function screenerPage() {
   await run();
 }
 
+async function salesPage() {
+  setLoading();
+  view.innerHTML = `<h1>Insider Sales</h1>
+    <p class="muted">Open-market and private sales reported with SEC transaction code S.</p>
+    <form class="card toolbar" id="sales-form">
+      <label>Ticker <input name="ticker" placeholder="AAPL"></label>
+      <label>Insider <input name="owner" placeholder="Insider name"></label>
+      <label>Start <input name="start_date" type="date"></label>
+      <label>End <input name="end_date" type="date"></label>
+      <label>Min value <input name="min_value" type="number" min="0" step="1000"></label>
+      <label>Page size <input name="limit" type="number" value="100" min="1" max="500"></label>
+      <button type="submit">Search</button>
+    </form>
+    <section id="sales-results" aria-live="polite"></section>`;
+
+  const form = document.querySelector('#sales-form');
+  const results = document.querySelector('#sales-results');
+  let offset = 0;
+
+  async function run() {
+    const params = new URLSearchParams(new FormData(form));
+    for (const [key, value] of [...params.entries()]) {
+      if (!String(value).trim()) params.delete(key);
+    }
+    params.set('transaction_code', 'S');
+    params.set('offset', String(offset));
+    results.innerHTML = '<p class="muted" role="status">Loading sales...</p>';
+
+    try {
+      const rows = await api(`/api/transactions?${params}`);
+      const limit = Number(form.elements.limit.value);
+      const loadedValue = rows.reduce((total, row) => total + Number(row.value || 0), 0);
+      const page = Math.floor(offset / limit) + 1;
+      const summary = `<section class="row metrics sales-metrics" aria-label="Loaded sales totals">
+        <article class="card metric col-6"><p>Sales loaded</p><strong>${fmtNumber(rows.length)}</strong></article>
+        <article class="card metric col-6"><p>Loaded sale value</p><strong>${fmtMoney(loadedValue)}</strong></article>
+      </section>`;
+      const content = rows.length
+        ? transactionTable(rows)
+        : '<article class="card empty-state" role="status"><h2>No sales found</h2><p class="muted">Adjust the filters and search again.</p></article>';
+      results.innerHTML = `${summary}${content}
+        <nav class="sales-pagination" aria-label="Sales result pages">
+          <button id="sales-previous" type="button" ${offset === 0 ? 'disabled' : ''}>Previous</button>
+          <span class="muted">Page ${page}</span>
+          <button id="sales-next" type="button" ${rows.length < limit ? 'disabled' : ''}>Next</button>
+        </nav>`;
+
+      document.querySelector('#sales-previous').addEventListener('click', () => {
+        offset = Math.max(0, offset - limit);
+        run();
+      });
+      document.querySelector('#sales-next').addEventListener('click', () => {
+        offset += limit;
+        run();
+      });
+    } catch (error) {
+      results.innerHTML = `<article class="card" role="alert" data-variant="danger"><h2>Sales request failed</h2><p class="error">${escapeHtml(error.message)}</p></article>`;
+    }
+  }
+
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    offset = 0;
+    run();
+  });
+  await run();
+}
+
 async function tickerPage(ticker) {
   const normalizedTicker = normalizeTicker(ticker);
   if (!normalizedTicker) {
@@ -302,6 +370,7 @@ async function route() {
     const hash = location.hash || '#/';
     const parts = hash.slice(2).split('/').filter(Boolean);
     if (parts[0] === 'clusters') return await clustersPage();
+    if (parts[0] === 'sales') return await salesPage();
     if (parts[0] === 'screener') return await screenerPage();
     if (parts[0] === 'ticker' && parts[1]) return await tickerPage(parts[1]);
     if (parts[0] === 'ingestion') return await ingestionPage();
